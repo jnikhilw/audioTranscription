@@ -31,14 +31,15 @@ def rnnoise_denoise_48k_chunk(chunk_48k_int16):
     
     return clean_48k_float.astype(np.float32), avg_speech_prob
 
-def _apply_dsp_filters_16k(clean_48k_float): # downsamples audio from 48kHz to 16kHz bc ASR engines usually dislike 48kHz sample rate
+def _apply_dsp_filters_16k(clean_48k_float: np.ndarray) -> np.ndarray: # downsamples audio from 48kHz to 16kHz bc ASR engines usually dislike 48kHz sample rate
     """
     HELPER FUNCTION: Keeps our math DRY. Applies downsampling, pre-emphasis, and DC removal.
     """
-    clean_16k_float = signal.resample_poly(clean_48k_float, up=1, down=3)
+    cleak_16k_float = signal.resample(clean_48k_float, up=1, down=3).astype(np.float32)
     # clean_16k_float = np.append(clean_16k_float[0], clean_16k_float[1:] - 0.97 * clean_16k_float[:-1]) # pre emphasis filter
-    clean_16k_float = clean_16k_float - np.mean(clean_16k_float) # DC offset removal.
-    return clean_16k_float.astype(np.float32)
+    # clean_16k_float = clean_16k_float - np.mean(clean_16k_float) # DC offset removal.
+    clean_16k_float /= 32768.0
+    return clean_16k_float
 
 def kyle_online_preprocess_chunk(chunk_48k_int16, vad_threshold=0.2, chunk_duration_ms=100): # denoises with rnnoise
     """
