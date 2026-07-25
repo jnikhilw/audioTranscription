@@ -1,31 +1,43 @@
-from dataset.asr_vocab import ID_TO_CHAR, BLANK_ID
-import torch
-from collections import defaultdict
-from dataset.asr_vocab import VOCAB
+from dataset.asr_vocab import ID_TO_CHAR, VOCAB
+from pyctcdecode import build_ctcdecoder
+import numpy as np
 
 
-def ctc_decode(predicted):
-    
-    """"Converts frame-by-frame CTC predictions into readable text."""
-    
-    ids = predicted[0].tolist()
+decoder = build_ctcdecoder(
+    labels=VOCAB[1:]
+)
+
+
+def ctc_decode_greedy(predicted_ids):
+
+    ids = predicted_ids[0].tolist()
+
     collapsed = []
-
     prev = None
-    
-    # Collapse consecutive repeated tokens.
 
     for token in ids:
         if token != prev:
             collapsed.append(token)
         prev = token
 
-    # Remove CTC blank tokens.
-    collapsed = [ token for token in collapsed if token != 0]
+    collapsed = [
+        token for token in collapsed
+        if token != 0
+    ]
 
-    text = "".join(
+    return "".join(
         ID_TO_CHAR[token]
         for token in collapsed
     )
 
-    return text
+
+def ctc_decode_beam(log_probs):
+
+    probs = np.exp(
+        log_probs[0]
+        .detach()
+        .cpu()
+        .numpy()
+    )
+
+    return decoder.decode(probs)

@@ -2,7 +2,7 @@ import torch
 from model.asr_model import ASRModel
 from dataset.asr_dataset import (load_audio_file, ASRDataset)
 from features.asr_features import waveform_to_log_mel
-from inference.asr_decoder import ctc_decode
+from inference.asr_decoder import ctc_decode_greedy, ctc_decode_beam 
 import torch.nn.functional as F
 
 
@@ -45,20 +45,30 @@ def transcribe_audio(audio_path: str , model: ASRModel) -> str:
         print("first nonblank ids:", top_ids[top_ids != 0][:50])
         
         prediction = logits.argmax(dim=2)
-        text = ctc_decode(prediction)
+        text = ctc_decode_greedy(prediction)
     return text 
     
 
-def transcribe_features(features, model):
+def transcribe_features(features, model, decoder="greedy"):
+    
 
     features = features.unsqueeze(0)
 
     with torch.no_grad():
         logits = model(features)
-        prediction = logits.argmax(dim=2)
-        text = ctc_decode(prediction)
+        
+        print("logits:", logits.shape)
+
+        if decoder == "greedy":
+            prediction = logits.argmax(dim=2)
+            text = ctc_decode_greedy(prediction)
+
+        elif decoder == "beam":
+            text = ctc_decode_beam(logits)
+
+        else:
+            raise ValueError(
+                f"Unknown decoder: {decoder}"
+            )
 
     return text
-
-
-

@@ -20,7 +20,11 @@ def decode_audio(audio: np.ndarray, mel_filterbank, model) -> str:
         return ""
 
     features = waveform_to_log_mel(audio, mel_filterbank)
-    prediction = transcribe_features(features, model)
+    prediction = transcribe_features(
+        features,
+        model,
+        decoder="greedy"
+    )    
     return postprocess_online(prediction)
 
 
@@ -82,13 +86,7 @@ def run_online(input_file: str | None , model):
         if event_type == "speech":
             audio = event["audio"]
             
-            print(
-                    "LIVE AUDIO:",
-                    "min =", float(audio.min()),
-                    "max =", float(audio.max()),
-                    "mean =", float(audio.mean()),
-                    "rms =", float(np.sqrt(np.mean(audio ** 2))),
-                )            
+                   
             
             #sample_rate = event["sample_rate"]
 
