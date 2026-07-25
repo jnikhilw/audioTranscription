@@ -28,3 +28,10 @@ class ASRModel(nn.Module):
         hidden_states, _ = self.encoder(x)
         logits = self.classifier(hidden_states)
         return logits
+    
+    
+    
+
+        
+        
+        

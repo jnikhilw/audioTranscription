@@ -82,6 +82,14 @@ def run_online(input_file: str | None , model):
         if event_type == "speech":
             audio = event["audio"]
             
+            print(
+                    "LIVE AUDIO:",
+                    "min =", float(audio.min()),
+                    "max =", float(audio.max()),
+                    "mean =", float(audio.mean()),
+                    "rms =", float(np.sqrt(np.mean(audio ** 2))),
+                )            
+            
             #sample_rate = event["sample_rate"]
 
             #if sample_rate != SAMPLE_RATE:

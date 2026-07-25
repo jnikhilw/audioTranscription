@@ -15,20 +15,20 @@ end_percent_val = 1.00
 
 
 start_train, limit_train =  get_librispeech_split_range(root="data/librispeech",
-    url="train-clean-100",
+    url="train-other-500",
     start_percent= start_percent_train,
     end_percent= end_percent_train)
 
 
 start_val, limit_val =  get_librispeech_split_range(root="data/librispeech",
-    url="train-clean-100",
+    url="train-other-500",
     start_percent= start_percent_val,
     end_percent= end_percent_val)
 
 
 eval_dataset_train = LibriSpeechASRDataset(
     root="data/librispeech",
-    url="train-clean-100",
+    url="train-other-500",
     start=start_train,
     limit=limit_train,
     use_cache=True,
@@ -38,7 +38,7 @@ eval_dataset_train = LibriSpeechASRDataset(
 
 eval_dataset_val = LibriSpeechASRDataset(
     root="data/librispeech",
-    url="train-clean-100",
+    url="train-other-500",
     start=start_val,
     limit=limit_val,
     use_cache=True,
@@ -91,7 +91,7 @@ def random_prediction(length: int) -> str:
 
 
 def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True):
-    model = load_model("checkpoints/latest.pt")
+    model = load_model("train_other_500_latest.pt")
     total_cer = 0
     
     for i in range(len(dataset)):

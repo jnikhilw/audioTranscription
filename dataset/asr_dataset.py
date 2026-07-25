@@ -2,14 +2,7 @@ import torch
 from dataset.asr_vocab import CHAR_TO_ID
 from torch.utils.data import Dataset
 import numpy as np
-from features.asr_features import (
-    Chunk_to_Frames,
-    apply_hamming_window,
-    compute_spectrogram,
-    build_mel_filterbank,
-    apply_mel_filterbank,
-    compute_log_mel, waveform_to_log_mel
-)
+from features.asr_features import waveform_to_log_mel, build_mel_filterbank
 import torchaudio
 import os
 
@@ -240,7 +233,7 @@ class LibriSpeechASRDataset(Dataset):
 
         waveform = waveform.squeeze(0).numpy()
 
-        features = waveform_to_log_mel( waveform, self.mel_filterbank)
+        features = waveform_to_log_mel(waveform, self.mel_filterbank)
 
         if self.use_cache:
             torch.save(features, cache_path)
