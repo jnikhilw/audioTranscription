@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from model.asr_model import ASRModel
 from dataset.asr_dataset import LibriSpeechASRDataset, collate_asr_batch
 import os
-from training.utils import save_checkpoint ,  get_librispeech_split_range, validate_ctc_batch, report_gradient_failure
+from training.utils import save_checkpoint ,  get_librispeech_split_range, validate_ctc_batch, report_gradient_failure 
 import time
 from training.evaluate import eval_diagnostics,  eval_dataset_val
 
@@ -177,7 +177,6 @@ for epoch in range(start_epoch, num_epoch):
         
         loss = ( per_sample_losses / loss_target_lengths).mean()
         
-        
 
         
         loss.backward()
@@ -230,7 +229,7 @@ for epoch in range(start_epoch, num_epoch):
         
     if epoch % 3 == 0:
             
-        current_cer = eval_diagnostics(eval_dataset_val, inspect_predictions = False, skill_score = False)
+        current_cer = eval_diagnostics(eval_dataset_val, inspect_predictions = False, skill_score = False, DECODER = "greedy")
             
         scheduler.step(current_cer)
             

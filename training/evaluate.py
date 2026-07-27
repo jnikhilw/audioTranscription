@@ -90,14 +90,14 @@ def random_prediction(length: int) -> str:
     return "".join(random.choice(VOCAB_CHARS) for _ in range(length))
 
 
-def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True):
-    model = load_model("train_other_500_latest.pt")
+def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DECODER = "greedy"):
+    model = load_model("checkpoints/train_other_500_latest.pt")
     total_cer = 0
     
     for i in range(len(dataset)):
     
         features, target_ids, truth = dataset[i]  
-        pred = transcribe_features(features,model)
+        pred = transcribe_features(features,model, decoder= DECODER)
         total_cer += character_error_rate(truth, pred)
         
         if inspect_predictions:
@@ -134,7 +134,8 @@ def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True):
         print("random baseline CER mean:", baseline_cer)   
         print("average CER:", avg_cer)        
         print("Skill score:", 1 - (avg_cer/baseline_cer))
-        
-        
 
+
+        
+print(eval_diagnostics(eval_dataset_val, inspect_predictions = True, skill_score = True, DECODER = "beam"))
 

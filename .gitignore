@@ -19,3 +19,28 @@ echo "data/librispeech/" >> .gitignore
 echo "data/cache/" >> .gitignore
 
 echo "*.tar.gz" >> .gitignore
+
+# Large pretrained language models
+language_models/*
+
+# Keep documentation inside the ignored folder
+!language_models/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+audio-transcription-env/
+
+# macOS
+.DS_Store
+
+# Local secrets/configuration
+.env
+*.key
+.ngc/

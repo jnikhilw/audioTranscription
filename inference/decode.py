@@ -57,7 +57,6 @@ def transcribe_features(features, model, decoder="greedy"):
     with torch.no_grad():
         logits = model(features)
         
-        print("logits:", logits.shape)
 
         if decoder == "greedy":
             prediction = logits.argmax(dim=2)
