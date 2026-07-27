@@ -12,7 +12,7 @@ INPUT_SOURCE = None
 def main():         
     if MODE == "online":
         print(f"[System] Booting Online ASR. Source: {'Live Microphone' if INPUT_SOURCE is None else INPUT_SOURCE}")
-        model = load_model("checkpoints/best_val.pt")
+        model = load_model("checkpoints/train_other_500_latest.pt")
         run_online(INPUT_SOURCE, model) 
         
     elif MODE == "offline":
