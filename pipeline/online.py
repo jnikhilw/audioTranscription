@@ -7,8 +7,8 @@ from features.audio_processing import stream_48k_file_to_pipeline, stream_microp
 from postprocess.onlineprocess import postprocess_online
 
 SAMPLE_RATE = 16_000
-DECODE_WINDOW_SAMPLES = 16000  # 1 second
-DECODE_STRIDE_SAMPLES = 4800   # 300 ms
+DECODE_WINDOW_SAMPLES = 48000  # 3 seconds
+DECODE_STRIDE_SAMPLES = 4800 
 FINALIZE_AFTER_SILENCE_MS = 700
 
 
@@ -23,7 +23,7 @@ def decode_audio(audio: np.ndarray, mel_filterbank, model) -> str:
     prediction = transcribe_features(
         features,
         model,
-        decoder="greedy"
+        decoder="beam"
     )    
     return postprocess_online(prediction)
 

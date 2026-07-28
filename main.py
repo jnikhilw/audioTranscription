@@ -9,6 +9,7 @@ MODE = "online"
 # Set to a string (e.g., "audio.wav") to stream a pre-recorded file.
 INPUT_SOURCE = None
 
+
 def main():         
     if MODE == "online":
         print(f"[System] Booting Online ASR. Source: {'Live Microphone' if INPUT_SOURCE is None else INPUT_SOURCE}")

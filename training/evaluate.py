@@ -11,7 +11,7 @@ end_percent_train = 0.95
 
 # val-set 
 start_percent_val = 0.95
-end_percent_val = 1.00
+end_percent_val = .97
 
 
 start_train, limit_train =  get_librispeech_split_range(root="data/librispeech",
@@ -137,5 +137,5 @@ def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DE
 
 
         
-print(eval_diagnostics(eval_dataset_val, inspect_predictions = True, skill_score = True, DECODER = "beam"))
+print(eval_diagnostics(eval_dataset_val, inspect_predictions = True, skill_score = True, DECODER = "greedy"))
 

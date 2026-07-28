@@ -1,37 +1,36 @@
-from dataset.asr_vocab import ID_TO_CHAR, VOCAB
-from pyctcdecode import build_ctcdecoder
-import torch
 from pathlib import Path
+
 import torch
 from pyctcdecode import build_ctcdecoder
+
 from dataset.asr_vocab import ID_TO_CHAR, VOCAB
 
 
-BEAM_WIDTH = 25
+BEAM_WIDTH = 50
 
 DECODER_LABELS = list(VOCAB)
 DECODER_LABELS[0] = ""
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-LM_PATH = (
+LM_DIR = (
     PROJECT_ROOT
     / "language_models"
     / "speechtotext_en_us_lm_vdeployable_v4.1"
-    / "riva_asr_train_datasets_3gram.binary"
 )
 
-if not LM_PATH.exists():
+LM_PATH = LM_DIR / "3-gram.pruned.3e-7.arpa"
+
+if not LM_PATH.is_file():
     raise FileNotFoundError(
-        f"Language model not found: {LM_PATH.resolve()}"
+        f"Language model not found: {LM_PATH}"
     )
 
 decoder = build_ctcdecoder(
     labels=DECODER_LABELS,
     kenlm_model_path=str(LM_PATH),
-    alpha=0.5,
-    beta=1.0,
+    alpha=0.2,
+    beta=0,
 )
 
 
@@ -44,6 +43,7 @@ def ctc_decode_greedy(predicted_ids):
     for token in ids:
         if token != prev:
             collapsed.append(token)
+
         prev = token
 
     collapsed = [
