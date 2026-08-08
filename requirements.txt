@@ -1,0 +1,9 @@
+torch==2.2.2
+torchaudio==2.2.2
+numpy==1.26.4
+scipy==1.17.1
+PyAudio==0.2.14
+pyrnnoise==0.4.3
+pyctcdecode==0.5.0
+
+
