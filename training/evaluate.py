@@ -5,13 +5,14 @@ from dataset.asr_dataset import LibriSpeechASRDataset
 from training.utils import get_librispeech_split_range
 import torch 
 
+
 # train-set 
 start_percent_train = 0.0
 end_percent_train = 0.95
 
 # val-set 
 start_percent_val = 0.95
-end_percent_val = .97
+end_percent_val = 1.00
 
 
 start_train, limit_train =  get_librispeech_split_range(root="data/librispeech",
@@ -90,8 +91,8 @@ def random_prediction(length: int) -> str:
     return "".join(random.choice(VOCAB_CHARS) for _ in range(length))
 
 
-def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DECODER = "greedy"):
-    model = load_model("checkpoints/train_other_500_latest.pt")
+def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DECODER = "beam"):
+    model = load_model("checkpoints/train_other_500_best_val.pt")
     total_cer = 0
     
     for i in range(len(dataset)):
@@ -136,6 +137,4 @@ def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DE
         print("Skill score:", 1 - (avg_cer/baseline_cer))
 
 
-        
-print(eval_diagnostics(eval_dataset_val, inspect_predictions = True, skill_score = True, DECODER = "greedy"))
-
+eval_diagnostics(eval_dataset_val, inspect_predictions = False, skill_score = False, DECODER = "beam")

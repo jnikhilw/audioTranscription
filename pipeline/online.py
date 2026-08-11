@@ -23,7 +23,7 @@ def decode_audio(audio: np.ndarray, mel_filterbank, model) -> str:
     prediction = transcribe_features(
         features,
         model,
-        decoder="beam"
+        decoder="greedy"
     )    
     return postprocess_online(prediction)
 
@@ -69,7 +69,7 @@ def run_online(input_file: str | None , model):
     
     audio_thread = threading.Thread(
         target= producer_target,
-        args= producer_args,
+        args= producer_args, 
         daemon=True
     )
     
