@@ -12,143 +12,278 @@ DECODE_STRIDE_SAMPLES = 4800
 FINALIZE_AFTER_SILENCE_MS = 700
 
 
-def decode_audio(audio: np.ndarray, mel_filterbank, model) -> str:
+def decode_audio(
+    audio: np.ndarray,
+    mel_filterbank,
+    model,
+    decoder="greedy",
+) -> str:
 
     """Convert one buffered 16 kHz waveform into cleaned transcript text."""
 
     if len(audio) == 0:
         return ""
 
-    features = waveform_to_log_mel(audio, mel_filterbank)
+    features = waveform_to_log_mel(
+        audio,
+        mel_filterbank
+    )
+
     prediction = transcribe_features(
         features,
         model,
-        decoder="greedy"
-    )    
+        decoder=decoder
+    )
+
     return postprocess_online(prediction)
 
 
-def run_online(input_file: str | None , model):
+def run_online(
+    input_file: str | None,
+    model,
+    decoder="greedy",
+):
 
     """
     Run online transcription using either:
     - live microphone input when input_file is None
     - simulated streaming from a 48 kHz WAV file otherwise
-    
-    Queue event contract:
 
-    Speech:
-        {"type": "speech",
-        "audio": np.ndarray
+    Partial transcripts:
+        Decode only the most recent rolling window.
+        Each partial replaces the previous partial.
 
-    Silence:
-        {"type": "silence",
-        "duration_ms": 100}
-
-    End:
-        {"type": "end"}
-
+    Final transcripts:
+        After sustained silence, decode the entire
+        accumulated utterance and commit that result.
     """
+
     pipeline_queue = queue.Queue(maxsize=100)
-    
+
     mel_filterbank = build_mel_filterbank(
-        sample_rate= SAMPLE_RATE,
+        sample_rate=SAMPLE_RATE,
         n_fft_bins=201,
-        n_mels=80)
-    
+        n_mels=80,
+    )
+
     if input_file is None:
         producer_target = stream_microphone_to_pipeline
-        producer_args = (pipeline_queue, )
+        producer_args = (pipeline_queue,)
     else:
         producer_target = stream_48k_file_to_pipeline
-        producer_args = (input_file,pipeline_queue)
+        producer_args = (
+            input_file,
+            pipeline_queue,
+        )
 
-    audio_buffer = np.empty(0, dtype=np.float32)
-    
-    accumulated_silence_ms = 0
-    
-    audio_thread = threading.Thread(
-        target= producer_target,
-        args= producer_args, 
-        daemon=True
+    # -------------------------------------------------
+    # Two different audio states
+    # -------------------------------------------------
+
+    # Contains ALL speech audio in the current utterance.
+    utterance_chunks = []
+
+    # Contains only recent audio for rolling partial decoding.
+    rolling_buffer = np.empty(
+        0,
+        dtype=np.float32
     )
-    
+
+    # Controls how often partial decoding happens.
+    samples_since_decode = 0
+
+    accumulated_silence_ms = 0
+
+    # Text state
+    current_partial = ""
+    committed_transcripts = []
+
+    audio_thread = threading.Thread(
+        target=producer_target,
+        args=producer_args,
+        daemon=True,
+    )
 
     audio_thread.start()
-    
+
     print("Starting online ASR pipeline...")
 
     while True:
-        
+
         event = pipeline_queue.get()
         event_type = event.get("type")
 
+        # =================================================
+        # SPEECH
+        # =================================================
+
         if event_type == "speech":
+
             audio = event["audio"]
-            
-                   
-            
-            #sample_rate = event["sample_rate"]
 
-            #if sample_rate != SAMPLE_RATE:
-                #raise ValueError(f"Expected {SAMPLE_RATE} Hz audio, got {sample_rate} Hz.")
+            # Save the audio permanently for this utterance.
+            utterance_chunks.append(audio)
 
-            audio_buffer = np.concatenate((audio_buffer, audio))
+            # Also add it to the rolling partial-decoding buffer.
+            rolling_buffer = np.concatenate(
+                (rolling_buffer, audio)
+            )
 
-            # Speech has resumed, so reset the consecutive-silence counter.
+            samples_since_decode += len(audio)
+
+            # Speech resumed.
             accumulated_silence_ms = 0
 
-            while len(audio_buffer) >= DECODE_WINDOW_SAMPLES:
+            # Keep at most the most recent 3 seconds
+            # for partial inference.
+            if len(rolling_buffer) > DECODE_WINDOW_SAMPLES:
+                rolling_buffer = rolling_buffer[
+                    -DECODE_WINDOW_SAMPLES:
+                ]
 
-                window = audio_buffer[:DECODE_WINDOW_SAMPLES]
-                prediction = decode_audio(
-                    window,
+            # ---------------------------------------------
+            # Partial decoding
+            # ---------------------------------------------
+
+            if (
+                len(rolling_buffer) >= DECODE_WINDOW_SAMPLES
+                and
+                samples_since_decode >= DECODE_STRIDE_SAMPLES
+            ):
+
+                partial_prediction = decode_audio(
+                    rolling_buffer,
                     mel_filterbank,
-                    model)
+                    model,
+                    decoder=decoder,
+                )
 
-                if prediction:
-                    print("partial transcript:", prediction)
+                if partial_prediction:
 
-                # Advance 300 ms while retaining overlapping context.
+                    # IMPORTANT:
+                    # Replace the previous partial.
+                    # Do NOT append/merge it.
+                    current_partial = partial_prediction
 
-                audio_buffer = audio_buffer[DECODE_STRIDE_SAMPLES:]
+                    print(
+                        "\r\033[Kpartial transcript: "
+                        + current_partial,
+                        end="",
+                        flush=True,
+                    )                                      
+
+                samples_since_decode = 0
+
+        # =================================================
+        # SILENCE
+        # =================================================
 
         elif event_type == "silence":
 
-            accumulated_silence_ms += event.get("duration_ms", 0)
+            accumulated_silence_ms += event.get(
+                "duration_ms",
+                0
+            )
 
-            if accumulated_silence_ms >= FINALIZE_AFTER_SILENCE_MS:
-                if len(audio_buffer) > 0:
+            if (
+                accumulated_silence_ms
+                >= FINALIZE_AFTER_SILENCE_MS
+            ):
+
+                if utterance_chunks:
+
+                    # Reconstruct the COMPLETE utterance.
+                    utterance_audio = np.concatenate(
+                        utterance_chunks
+                    )
+
+                    # Final decode gets full utterance context.
                     final_prediction = decode_audio(
-                        audio_buffer,
+                        utterance_audio,
                         mel_filterbank,
-                        model)
+                        model,
+                        decoder=decoder,
+                    )
 
                     if final_prediction:
-                        print("final transcript:", final_prediction)
 
-                # Begin a fresh utterance after sustained silence.
-                
-                audio_buffer = np.empty(0, dtype=np.float32)
+                        committed_transcripts.append(
+                            final_prediction
+                        )
+
+                        print(
+                            "final transcript:",
+                            final_prediction
+                        )
+
+                        print(
+                            "committed transcript:",
+                            " ".join(committed_transcripts)
+                        )
+
+                # -----------------------------------------
+                # Reset for the next utterance
+                # -----------------------------------------
+
+                utterance_chunks = []
+
+                rolling_buffer = np.empty(
+                    0,
+                    dtype=np.float32
+                )
+
+                current_partial = ""
+
+                samples_since_decode = 0
+
                 accumulated_silence_ms = 0
 
+        # =================================================
+        # END OF STREAM
+        # =================================================
+
         elif event_type == "end":
-            
-            # Decode speech remaining after the last full window.
-            if len(audio_buffer) > 0:
+
+            if utterance_chunks:
+
+                utterance_audio = np.concatenate(
+                    utterance_chunks
+                )
 
                 final_prediction = decode_audio(
-                    audio_buffer,
+                    utterance_audio,
                     mel_filterbank,
-                    model)
+                    model,
+                    decoder=decoder,
+                )
 
                 if final_prediction:
-                    print("final transcript:", final_prediction)
+
+                    committed_transcripts.append(
+                        final_prediction
+                    )
+                    
+                    print()
+
+                    print(
+                        "final transcript:",
+                        final_prediction
+                    )
+
+                    print(
+                        "committed transcript:",
+                        " ".join(committed_transcripts)
+                    )
 
             break
 
         else:
-            print("Ignoring unknown queue event:", event)
+
+            print(
+                "Ignoring unknown queue event:",
+                event
+            )
 
     audio_thread.join()
+
     print("Online ASR pipeline finished.")
