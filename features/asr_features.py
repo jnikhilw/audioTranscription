@@ -1,6 +1,7 @@
 import numpy as np
 import torch 
 
+
 SAMPLE_Rate = 16_000
 CHUNK_SIZE = 1600      # 100 ms, 10 chunks/sec
 FRAME_SIZE = 400       # 25 ms
@@ -12,29 +13,45 @@ def Chunk_to_Frames(
     frame_size: int = FRAME_SIZE,
     hop_size: int = HOP_SIZE) -> np.ndarray:
     
+    """
+    Converts a 1D audio sample array into a frame matrix by
+    dividing the chunk into overlapping acoustic frames, each
+    corresponding to a time step. 
+    
+    Args:
+        chunk (np.ndarray): 1D NumPy array of sampled audio.
+        Shape: (chunk_size,). 
+        frame_size (int): Number of samples per frame.
+        hop_size (int): Sample distance separating each frame's starting sample. 
+    
+    Returns:
+        np.ndarray: 2D matrix of framed audio samples
+        Shape: (num_frames, frame_size). 
+    """    
+    
     chunk = np.asarray(chunk, dtype=np.float32)
     
     if chunk.size == 0:
-        return np.empty(
-            (0, frame_size),
-            dtype=np.float32,)
-
+        return np.empty((0, frame_size), dtype=np.float32,)
     
+    # if the chunk size is less than the frame size, pad the chunk. 
     if chunk.size < frame_size:
         padding_needed = frame_size - chunk.size
         chunk = np.pad(
             chunk,
-            pad_width=(0, padding_needed),
-            mode="constant",
-            constant_values=0,
-        )
+            pad_width = (0, padding_needed),
+            mode = "constant",
+            constant_values = 0,)
+        
     frames = []
     
+    # Loop across the chunk and append each frame to the frame list.  
     for i in range(0, len(chunk) - frame_size + 1, hop_size):   
         frame = chunk[i: i + frame_size]  
         frames.append(frame)
         
     return np.stack(frames).astype(np.float32, copy=False)
+
         
 def remove_dc_offset(signal: np.ndarray) -> np.ndarray:
     """
@@ -42,6 +59,7 @@ def remove_dc_offset(signal: np.ndarray) -> np.ndarray:
     by subtracting the global mean, centering the waveform at 0.
     """
     return signal - np.mean(signal)
+
 
 def apply_hamming_window(frames: np.ndarray) -> np.ndarray:
 
@@ -51,9 +69,8 @@ def apply_hamming_window(frames: np.ndarray) -> np.ndarray:
     discontinuities at frame edges before FFT/DFT computation.
 
     Args:
-
-    frames np.ndarray: 2D matrix of framed audio samples.
-    Shape: (num_frames, frame_size). 
+        frames np.ndarray: 2D matrix of framed audio samples.
+        Shape: (num_frames, frame_size). 
 
     Returns:
         np.ndarray: 2D matrix of windowed audio frames with reduced edge discontinuities.
@@ -210,7 +227,9 @@ def compute_log_mel(
     mel_spec: np.ndarray,
     epsilon: float = 1e-10) -> np.ndarray:
 
-    """    
+    """
+    Applies a logarithmic transformation to the Mel Spectrogram element-wise.
+    
     Human auditory perception responds approximately logarithmically to
     sound intensity rather than linearly. Applying the logarithm compresses
     large magnitude differences and expands smaller differences, producing
@@ -218,11 +237,9 @@ def compute_log_mel(
     A small epsilon value is added before the logarithm to prevent undefined values from zero-energy mel bins.
 
     Args:
-        mel_spec (np.ndarray):
-        Mel spectrogram.
+        mel_spec (np.ndarray): Mel spectrogram.
         Shape: (num_frames, n_mels)
-        epsilon (float):
-        Small numerical constant added for stability.
+        epsilon (float): Small numerical constant added for stability.
 
     Returns:
         np.ndarray:
@@ -236,22 +253,23 @@ def compute_log_mel(
 def waveform_to_log_mel( waveform: np.ndarray, mel_filterbank: np.ndarray) -> torch.Tensor :
     
     """
-    Extracts log-mel filterbank energies from raw audio frames.
-    
-    This modular wrapper acts as the feature extraction node inside the ASR pipeline,
-    transforming physical sound waves into standardized neural-network-ready features.
+    Combines the feature pipeline functions into one function that converts a 1D audio NumPy array
+    into an log-mel feature matrix for ASR processing. 
     
     Args:
-        waveform (np.ndarray): 1D audio signal sampled at 16kHz. Shape: (samples,)
+        waveform (np.ndarray): 1D audio signal sampled at 16kHz.
+        Shape: (samples,)
+        mel_filterbank (np.ndarray): Precomputed Mel filterbank matrix.
+        Shape: (80, n_fft_bins)
     
     Returns:
         torch.Tensor: Log-mel spectrogram feature matrix. Shape: (num_frames, 80)
     """
+    
     waveform = remove_dc_offset(waveform)
     frames = Chunk_to_Frames(waveform)
     frames = apply_hamming_window(frames)
     spec = compute_spectrogram(frames)
-
     mel = apply_mel_filterbank(spec, mel_filterbank)
     log_mel = compute_log_mel(mel)
 
