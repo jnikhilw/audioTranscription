@@ -12,23 +12,6 @@ model_config = {
 }
 
 
-def load_metadata(csv_path: str):
-
-    examples = []
-
-    with open(csv_path, "r") as f:
-
-        reader = csv.DictReader(f)
-
-        for row in reader:
-            examples.append(
-                (row["audio_path"],
-                row["transcript"]
-                ))
-            
-    return examples
-
-
 def save_checkpoint(path, epoch, model, optimizer, avg_loss, best_val_cer=None):
     torch.save(
         {

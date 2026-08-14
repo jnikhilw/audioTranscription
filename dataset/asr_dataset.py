@@ -1,7 +1,6 @@
 import torch
 from dataset.asr_vocab import CHAR_TO_ID
 from torch.utils.data import Dataset
-import numpy as np
 from features.asr_features import waveform_to_log_mel, build_mel_filterbank
 import torchaudio
 import os
@@ -87,89 +86,6 @@ def load_audio_file(audio_path: str) -> torch.Tensor:
 
     return waveform
 
-
-class ASRDataset(Dataset):
-    
-    """
-    A custom PyTorch Dataset for map-style loading of acoustic-text pairs featuring a disk-caching mechanism.
-    It includes an efficient file-system caching layer that stores extracted feature tensors on disk and reuses them across epochs,
-    avoiding repeated DSP computation.
-    
-    """
-
-    def __init__(self, examples: list[tuple[str, str]], use_cache =True):
-
-        """
-        Initializes the dataset with metadata references.
-
-        Args:
-            examples (list[tuple[str, str]]): A list of tuples where each element contains
-                                              (audio_path, transcript).
-        """
-
-        self.examples = examples
-        
-        self.mel_filterbank = (
-            build_mel_filterbank(
-            sample_rate=16000,
-            n_fft_bins= 201,
-            n_mels=80 ) )
-        
-        self.use_cache = use_cache
-        
-        if self.use_cache:    
-            os.makedirs("cache", exist_ok=True)
-
-    def __len__(self) -> int:
-        
-        """Returns the total number of audio-transcript samples in the dataset."""
-
-        return len(self.examples)
-
-
-    def __getitem__(self, idx):
-
-        """
-        Fetches, processes, and returns a single tokenized acoustic-text sample pair.
-
-        Utilizes a caching strategy to load pre-computed 2D log-mel features from disk if available,
-        otherwise falling back to raw audio loading, resampling, and feature extraction.
-
-        Args:
-            idx (int): The index cursor targeting the requested sample pair.
-
-        Returns:
-            tuple[torch.Tensor, torch.Tensor]: A tuple containing:
-                - features (torch.Tensor): Log-mel spectrogram matrix. Shape: (num_frames, 80)
-                - target_ids (torch.Tensor): 1D sequence of vocabulary IDs. Shape: (num_tokens,)
-        """
-    
-        audio_path, transcript = self.examples[idx]
-        target_ids = text_to_ids(transcript)
-        cache_name = os.path.basename(audio_path)
-        cache_path = ( "cache/" + cache_name + ".pt")
-        
-        if self.use_cache:
-                
-        # Attempt to load cached features to avoid recomputing DSP.
-            try:
-                #Load pre-computed PyTorch tensor from disk storage
-                features = torch.load(cache_path)
-                return features, target_ids
-        
-            # Cache miss fallback: Execute complete ingestion and feature extraction pipeline
-            except FileNotFoundError:
-                pass 
-    
-        waveform = load_audio_file(audio_path)
-        waveform = waveform.numpy()
-        features = waveform_to_log_mel( waveform, self.mel_filterbank)
-        
-        if self.use_cache:       
-            torch.save(features, cache_path)
-    
-        return features, target_ids
-    
 
 class LibriSpeechASRDataset(Dataset):
 
