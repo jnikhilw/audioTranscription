@@ -16,7 +16,7 @@ def normalize_transcript(text: str) -> str:
     The special "<blank>" token remains in the vocabulary but is excluded from transcript text.
 
     Args:
-        text (str): Raw target transcript string.
+        text (str): Raw target transcript string. 
 
     Returns:
         str: Cleaned transcript containing only lowercase valid vocabulary characters.
@@ -45,7 +45,8 @@ def text_to_ids(text: str) -> torch.Tensor:
         text (str): Raw target transcript string.
     
     Returns:
-        torch.Tensor: 1D tensor of token indices. Shape: (num_tokens,), Data Type: torch.long
+        torch.Tensor: 1D tensor of token indices.
+           Shape: (num_tokens,), Data Type: torch.long
     """
     
     text = normalize_transcript(text)
@@ -59,7 +60,7 @@ def load_audio_file(audio_path: str) -> torch.Tensor:
     """
     Loads an audio asset and standardizes it into a single-channel 16kHz time-domain waveform.
 
-    This ingestion node ensures structural uniformity across varying raw audio formats.
+    This function ensures structural uniformity across varying raw audio formats.
     It guarantees down-streaming components receive consistent sample lengths and channel shapes,
     preventing runtime errors in batch tensor operations.
 
@@ -67,7 +68,8 @@ def load_audio_file(audio_path: str) -> torch.Tensor:
         audio_path (str): File path to the source audio file (e.g., .wav, .flac, .mp3).
 
     Returns:
-        torch.Tensor: Normalized 1D temporal signal. Shape: (samples,), Data Type: torch.float32
+        torch.Tensor: Normalized 1D temporal signal.
+           Shape: (samples,), Data Type: torch.float32
     """ 
     
     waveform, sample_rate = torchaudio.load(audio_path)
@@ -88,6 +90,15 @@ def load_audio_file(audio_path: str) -> torch.Tensor:
 
 
 class LibriSpeechASRDataset(Dataset):
+    """
+      A custom PyTorch Dataset for loading acoustic-text pairs featuring a disk-caching mechanism.
+      It includes an efficient file-system caching layer that stores extracted feature tensors on
+      disk and reuses them across epochs, avoiding repeated DSP computation. 
+      
+      Args:
+        Dataset : Librispeech acoustic dataset.
+      """    
+    
 
     def __init__(
         self,
@@ -96,7 +107,19 @@ class LibriSpeechASRDataset(Dataset):
         start: int = 0,
         limit: int | None = None,
         use_cache: bool = True,         
-        return_transcript: bool = False ):
+        return_transcript: bool = False):
+    
+        """
+        Initializes a LibriSpeech dataset subset and feature-extraction configuration.
+    
+        Args:
+            root (str): Root directory containing the LibriSpeech dataset.
+            url (str): LibriSpeech dataset subset to load.
+            start (int): Starting subset index of the dataset. 
+            limit (int): Number of samples to include after the starting index. 
+            use_cache (bool): Determines if feature caching is enabled to store feature-extracted tensors. 
+            return_transcript (bool): Determines whether to return transcripts for samples. 
+               """        
         
         full_dataset = torchaudio.datasets.LIBRISPEECH(root=root, url=url, download=False)
 
@@ -105,7 +128,7 @@ class LibriSpeechASRDataset(Dataset):
         else:
             indices = range(start, start + limit)
 
-        self.dataset = torch.utils.data.Subset( full_dataset, indices)
+        self.dataset = torch.utils.data.Subset(full_dataset, indices)
 
         self.use_cache = use_cache
         self.cache_dir = os.path.join(
@@ -122,9 +145,28 @@ class LibriSpeechASRDataset(Dataset):
         self.return_transcript = return_transcript
         
     def __len__(self) -> int:
+        
+        """ Returns the total number of audio-transcript samples in the dataset."""
+        
         return len(self.dataset)
 
     def __getitem__(self, idx):
+        
+        """ Fetches a dataset sample converts target transcripts into their token IDs and returns
+        extracted features along with target IDs. If feature caching is enabled previously computed
+        features are loaded from disk preventing recomputation, while features not computed are
+        extracted and saved to disk. 
+   
+        
+        Args:
+            idx (int): index of sample in dataset.
+            
+        Returns:
+            features (torch.Tensor): Log-mel spectrogram feature matrix.
+               Shape: (num_frames, 80)
+            target_ids (list): Target IDs corresponding to target transcripts.
+            transcript (str, optional): Normalized transcript if return_transcript is enabled. 
+        """
         waveform, sample_rate, transcript, speaker_id, chapter_id, utterance_id = self.dataset[idx]
 
         cache_path = os.path.join(self.cache_dir, f"{speaker_id}_{chapter_id}_{utterance_id}.pt")
@@ -176,10 +218,14 @@ def collate_asr_batch(batch):
 
     Returns:
         tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
-            padded_features (torch.Tensor): Padded feature tensor. Shape: (batch_size, max_num_frames, 80)
-            padded_targets (torch.Tensor): Padded token ID tensor. Shape: (batch_size, max_num_tokens)
-            input_lengths (torch.Tensor): 1D tensor of original acoustic frame counts. Shape: (batch_size,)
-            target_lengths (torch.Tensor): 1D tensor of original transcript token counts. Shape: (batch_size,)
+        padded_features (torch.Tensor): Padded feature tensor.
+           Shape: (batch_size, max_num_frames, 80)
+        padded_targets (torch.Tensor): Padded token ID tensor.
+           Shape: (batch_size, max_num_tokens)
+        input_lengths (torch.Tensor): 1D tensor of original acoustic frame counts.
+           Shape: (batch_size,)
+        target_lengths (torch.Tensor): 1D tensor of original transcript token counts.
+           Shape: (batch_size,)
     """
     
     features = []
@@ -221,6 +267,3 @@ def collate_asr_batch(batch):
         padded_targets,
         input_lengths,
         target_lengths)
-    
-
-

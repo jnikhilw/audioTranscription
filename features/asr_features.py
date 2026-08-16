@@ -11,22 +11,24 @@ HOP_SIZE = 160         # 10 ms
 def Chunk_to_Frames(
     chunk: np.ndarray,
     frame_size: int = FRAME_SIZE,
-    hop_size: int = HOP_SIZE) -> np.ndarray:
+    hop_size: int = HOP_SIZE,
+) -> np.ndarray:
     
     """
+    
     Converts a 1D audio sample array into a frame matrix by
     dividing the chunk into overlapping acoustic frames, each
     corresponding to a time step. 
     
     Args:
         chunk (np.ndarray): 1D NumPy array of sampled audio.
-        Shape: (chunk_size,). 
+           Shape: (chunk_size,). 
         frame_size (int): Number of samples per frame.
         hop_size (int): Sample distance separating each frame's starting sample. 
     
     Returns:
         np.ndarray: 2D matrix of framed audio samples
-        Shape: (num_frames, frame_size). 
+           Shape: (num_frames, frame_size). 
     """    
     
     chunk = np.asarray(chunk, dtype=np.float32)
@@ -54,15 +56,17 @@ def Chunk_to_Frames(
 
         
 def remove_dc_offset(signal: np.ndarray) -> np.ndarray:
+    
     """
     Removes the DC offset (0 Hz component) from the audio signal 
     by subtracting the global mean, centering the waveform at 0.
     """
+    
     return signal - np.mean(signal)
 
 
 def apply_hamming_window(frames: np.ndarray) -> np.ndarray:
-
+    
     """
     Applies a raised-cosine Hamming window to each audio frame,
     attenuating boundary amplitudes to reduce spectral leakage caused by
@@ -74,7 +78,7 @@ def apply_hamming_window(frames: np.ndarray) -> np.ndarray:
 
     Returns:
         np.ndarray: 2D matrix of windowed audio frames with reduced edge discontinuities.
-        Shape: (num_frames, frame_size)
+           Shape: (num_frames, frame_size)
     """
     
     frame_size = frames.shape[1]
@@ -83,7 +87,7 @@ def apply_hamming_window(frames: np.ndarray) -> np.ndarray:
 
 
 def compute_spectrogram(frames: np.ndarray):
-
+    
     """""
     Computes the magnitude spectrogram of the input frames using a Real FFT.
     
@@ -99,7 +103,7 @@ def compute_spectrogram(frames: np.ndarray):
 
     Returns:
         np.ndarray: Magnitude spectrogram.
-        Shape: (num_frames, (frame_size/2)+1).      
+           Shape: (num_frames, (frame_size/2)+1).      
     """
     
     # FFT along each row
@@ -110,11 +114,11 @@ def compute_spectrogram(frames: np.ndarray):
     return magnitude
 
 
-def hz_to_mel(frequency_hz: np.ndarray | float) -> np.ndarray | float:
+def hz_to_mel(frequency_hz: np.ndarray) -> np.ndarray:
     return 2595 * np.log10(1 + frequency_hz / 700)
 
 
-def mel_to_hz(mel: np.ndarray | float) -> np.ndarray | float:
+def mel_to_hz(mel: np.ndarray) -> np.ndarray:
     return 700 * (10 ** (mel / 2595) - 1)
 
 
@@ -123,8 +127,9 @@ def build_mel_filterbank(
     n_fft_bins: int,
     n_mels: int,
     f_min: float = 0.0,
-    f_max: float | None = None) -> np.ndarray:
-
+    f_max: float | None = None, 
+) -> np.ndarray:
+    
     """  
     The filterbank maps linear-frequency FFT bins into perceptually
     spaced mel bins. Frequencies are first converted from Hz to mel,
@@ -141,8 +146,9 @@ def build_mel_filterbank(
         f_max (float | None): Highest frequency included. Defaults to Nyquist frequency.
 
     Returns:
-        np.ndarray: Mel filterbank, each row is one triangular mel filter and each column corresponds to one FFT frequency bin.
-        Shape: (n_mels, n_fft_bins).
+        np.ndarray: Mel filterbank, each row is one triangular mel filter and each
+        column corresponds to one FFT frequency bin.
+           Shape: (n_mels, n_fft_bins).
     """
 
     if f_max is None:
@@ -168,10 +174,9 @@ def build_mel_filterbank(
     filterbank = np.zeros((n_mels, n_fft_bins), dtype=np.float32)
 
     for m in range(1, n_mels + 1):
+       
         left = hz_points[m - 1]
-
         center = hz_points[m]
-
         right = hz_points[m + 1]
 
         for k, freq in enumerate(fft_freqs):
@@ -185,9 +190,7 @@ def build_mel_filterbank(
     return filterbank
 
 
-def apply_mel_filterbank(
-    magnitude_spec: np.ndarray,
-    mel_filterbank: np.ndarray) -> np.ndarray:
+def apply_mel_filterbank( magnitude_spec: np.ndarray, mel_filterbank: np.ndarray) -> np.ndarray:
     
     """ 
     Projects a linear-frequency magnitude spectrogram into mel space.
@@ -198,35 +201,23 @@ def apply_mel_filterbank(
     approximating human auditory perception.
 
     Parameters
-    ----------
-    magnitude_spec : np.ndarray
-        Shape:
-        (num_frames, n_fft_bins)
+    Args:
+        magnitude_spec : np.ndarray
+           Shape: (num_frames, n_fft_bins)
+        mel_filterbank : np.ndarray
+           Shape: (n_mels, n_fft_bins)
 
-
-    mel_filterbank : np.ndarray
-        Shape:
-        (n_mels, n_fft_bins)
-
-    Returns
-    -------
-    np.ndarray
-        Mel spectrogram.
-
-        Shape:
-        (num_frames, n_mels)
+    Returns:
+        np.ndarray: Mel spectrogram.
+           Shape: (num_frames, n_mels)
 
     """
-
     mel_spec = magnitude_spec @ mel_filterbank.T
     return mel_spec.astype(np.float32, copy=False)
 
 
-def compute_log_mel(
-
-    mel_spec: np.ndarray,
-    epsilon: float = 1e-10) -> np.ndarray:
-
+def compute_log_mel(mel_spec: np.ndarray, epsilon: float = 1e-10) -> np.ndarray:
+    
     """
     Applies a logarithmic transformation to the Mel Spectrogram element-wise.
     
@@ -238,19 +229,19 @@ def compute_log_mel(
 
     Args:
         mel_spec (np.ndarray): Mel spectrogram.
-        Shape: (num_frames, n_mels)
+           Shape: (num_frames, n_mels)
         epsilon (float): Small numerical constant added for stability.
 
     Returns:
         np.ndarray:
         Log-mel spectrogram.
-        Shape: (num_frames, n_mels)       
+           Shape: (num_frames, n_mels)       
     """
     
     return np.log(mel_spec + epsilon).astype(np.float32, copy=False)
 
 
-def waveform_to_log_mel( waveform: np.ndarray, mel_filterbank: np.ndarray) -> torch.Tensor :
+def waveform_to_log_mel( waveform: np.ndarray, mel_filterbank: np.ndarray) -> torch.Tensor:
     
     """
     Combines the feature pipeline functions into one function that converts a 1D audio NumPy array
@@ -258,12 +249,13 @@ def waveform_to_log_mel( waveform: np.ndarray, mel_filterbank: np.ndarray) -> to
     
     Args:
         waveform (np.ndarray): 1D audio signal sampled at 16kHz.
-        Shape: (samples,)
+           Shape: (samples,)
         mel_filterbank (np.ndarray): Precomputed Mel filterbank matrix.
-        Shape: (80, n_fft_bins)
+           Shape: (80, n_fft_bins)
     
     Returns:
-        torch.Tensor: Log-mel spectrogram feature matrix. Shape: (num_frames, 80)
+        torch.Tensor: Log-mel spectrogram feature matrix.
+           Shape: (num_frames, 80)
     """
     
     waveform = remove_dc_offset(waveform)
