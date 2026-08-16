@@ -1,4 +1,3 @@
-import csv
 import torchaudio
 import torch
 import torchaudio
@@ -32,6 +31,20 @@ def get_librispeech_split_range(
     start_percent: float,  
     end_percent: float) -> tuple[int, int]:
     
+    """ 
+    Computes the starting index and sample size for the dataset subset specified by
+    the start and end percent. 
+    
+    Args:  
+        root (str): Root directory containing the LibriSpeech dataset.
+        url (str): LibriSpeech subset to load.
+        start_percent (float): Fractional starting position of the subset.
+        end_percent (float): Fractional ending position of the subset.
+        
+    Returns:
+        tuple[int, int]: Starting index and number of samples in the subset.
+    """      
+    
     full_dataset = torchaudio.datasets.LIBRISPEECH( 
         root=root,  
         url=url,  
@@ -47,8 +60,18 @@ def get_librispeech_split_range(
     return start, limit
 
 
-
 def assert_finite(name: str, tensor: torch.Tensor) -> None:
+    
+    """
+    If non-finite values are detected in a tensor, print diagnostic statistics
+    before raising an error to prevent corrupted gradients. 
+     
+    Args:  
+        name (str): Name of the tensor being checked. 
+        tensor (torch.Tensor): Tensor to check
+        
+    """        
+    
     if not torch.isfinite(tensor).all():
         print(f"{name} contains non-finite values")
         print("shape:", tuple(tensor.shape))
@@ -72,7 +95,21 @@ def validate_ctc_batch(
     input_lengths: torch.Tensor,
     target_lengths: torch.Tensor,
 ) -> None:
-    """Validate shapes, lengths, and target IDs before CTCLoss."""
+    
+    """
+    Validates CTC tensor shapes, sequence lengths, and target token IDs before
+    computing CTC loss.
+
+    Args:
+        log_probs (torch.Tensor): Log-probability tensor for CTC loss.
+           Shape: (time_steps, batch_size, class_count)
+        targets (torch.Tensor): Packed target token IDs for all samples in the batch.
+        input_lengths (torch.Tensor): Number of valid model output time steps for each sample.
+           Shape: (batch_size,)
+        target_lengths (torch.Tensor): Number of target tokens for each sample.
+           Shape: (batch_size,)
+    
+    """
 
     time_steps, batch_size, class_count = log_probs.shape
 
@@ -122,12 +159,22 @@ def validate_ctc_batch(
             f"Expected IDs from 1 to {class_count - 1}."
         )
     
+    
 def report_gradient_failure(
     model: torch.nn.Module,
     epoch: int,
     batch_index: int,
 ) -> None:
-    """Report the largest layer gradient norms after clipping fails."""
+    """
+    Reports the largest parameter gradient norms and non-finite gradient values
+    after gradient clipping fails.
+
+    Args:
+        model (torch.nn.Module): Model whose parameter gradients are inspected.
+        epoch (int): Training epoch where the failure occurred.
+        batch_index (int): Batch index where the failure occurred.
+
+    """
 
     reports = []
 

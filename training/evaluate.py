@@ -3,14 +3,17 @@ import random
 from dataset.asr_vocab import VOCAB
 from dataset.asr_dataset import LibriSpeechASRDataset
 from training.utils import get_librispeech_split_range
-import torch 
 
+# Evaluation settings
+INSPECT_PREDICTIONS = True
+SKILL_SCORE = False
+DECODER = "beam"
 
-# train-set 
+# train split   
 start_percent_train = 0.0
 end_percent_train = 0.95
 
-# val-set 
+# validation split  
 start_percent_val = 0.95
 end_percent_val = 1.00
 
@@ -48,6 +51,18 @@ eval_dataset_val = LibriSpeechASRDataset(
 )
 
 def edit_distance(a: str, b: str) -> int:
+    
+    """
+    Determines the minimum number of deletions, insertions, or substitutions
+    required to transform one string into another.
+
+    Args:
+        a (str): Source string 
+        b (str): Target string  
+        
+    Returns:
+        int : Minimum number of edits required to transform string a into string b.
+    """
 
     dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
 
@@ -77,10 +92,8 @@ def edit_distance(a: str, b: str) -> int:
 
 
 def character_error_rate(truth: str, pred: str) -> float:
-    
     if len(truth) == 0:
         return 0.0 if len(pred) == 0 else 1.0
-
     return edit_distance(truth, pred) / len(truth)
 
 
@@ -91,14 +104,26 @@ def random_prediction(length: int) -> str:
     return "".join(random.choice(VOCAB_CHARS) for _ in range(length))
 
 
-def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DECODER = "beam"):
+def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, decoder = DECODER):
+    """
+    Prints character error rate to evaluate model accuracy on the validation split with
+    the specified decoder with optional prediction inspection and skill score. 
+
+    Args:
+        dataset: Source string 
+        inspect_predictions (bool): Target string
+        skill_score (bool): Whether to compute CER relative to a random-prediction baseline. 
+        decoder (str): Decoding method, either "greedy" or "beam".
+
+    """
+    
     model = load_model("checkpoints/train_other_500_best_val.pt")
     total_cer = 0
     
     for i in range(len(dataset)):
     
         features, target_ids, truth = dataset[i]  
-        pred = transcribe_features(features,model, decoder= DECODER)
+        pred = transcribe_features(features,model, decoder= decoder)
         total_cer += character_error_rate(truth, pred)
         
         if inspect_predictions:
@@ -137,4 +162,4 @@ def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, DE
         print("Skill score:", 1 - (avg_cer/baseline_cer))
 
 
-eval_diagnostics(eval_dataset_val, inspect_predictions = False, skill_score = False, DECODER = "beam")
+eval_diagnostics(eval_dataset_val, inspect_predictions = INSPECT_PREDICTIONS, skill_score = False, decoder = DECODER)
