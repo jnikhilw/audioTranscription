@@ -264,6 +264,8 @@ o wer quish the tery very much avfor this i went tevery day on bord and broght a
 
 While live-inference Bi-LSTMs using audio chunking allow the model to benefit from bidirectional phonetic context, the context is limited to each audio chunk rather than complete audio sequences, potentially reducing the ability to capture phonetic dependencies that extend beyond chunk boundaries. Importantly, the effectiveness of our model alone cannot empirically establish any comparative advantage over unidirectional systems for live-inference ASR, since a matched unidirectional model under otherwise identical conditions would need to be evaluated to establish a baseline. 
 
+Secondly, validation performance tests show that while beam search improves CER, enabling the language model increases, rather than decreases, the character error rate; diagnosing and addressing the cause of this performance drop will be crucial to letting linguistic context influence predictions. 
+
 Planned areas for improvement include:
 
 - Further tuning beam-search decoding and KenLM integration.
