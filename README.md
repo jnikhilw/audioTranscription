@@ -6,7 +6,35 @@ This project implements a Bidirectional Long Short-Term Memory (Bi-LSTM) live-in
 
 The pipeline performs RNNoise-based denoising to suppress background noise, and uses voice activity detection to limit unnecessary ASR processing.  The resulting audio is converted to a log-Mel spectrogram and passed into a Bi-LSTM acoustic model trained using Connectionist Temporal Classification (CTC), producing character-level outputs decoded into corresponding text, using either greedy decoding or beam search with an optional KenLM language model. Text is displayed to the user via continuously updating partial transcripts, and a finalized transcript when silence is detected. 
 
-The project explores whether Bi-LSTMs traditionally used for offline ASR tasks are adaptable into a live-inference system, using incremental, chunk-based audio processing. The system aims to retain the potential accuracy gains of bidirectional context while approaching the low latency of live-inference unidirectional systems.  
+The project explores whether Bi-LSTMs traditionally used for offline ASR tasks are adaptable into a live-inference system, using incremental, chunk-based audio processing. The system aims to retain the potential accuracy gains of bidirectional context while approaching the low latency of live-inference unidirectional systems.
+
+## Results at a Glance
+
+- **Model Size:** 617,757 trainable parameters
+- **Training Data:** Approximately 600 hours of LibriSpeech (`train-clean-100` and `train-other-500`)
+- **Greedy Decoding CER:** 26.6% on `train-other-500` validation data
+- **Beam Search CER:** 25.5% on `train-other-500` validation data
+- **Mean Partial Decode Latency:** 29.2 ms on Apple M4 Pro
+- **Streaming Chunk Duration:** 100 ms
+
+## Individual Contributions
+
+### Nikhil Weerakoon: ASR / Machine Learning
+
+- Implemented log-Mel feature extraction for ASR input
+- Built and trained the Bi-LSTM acoustic model using CTC
+- Implemented greedy and beam-search decoding
+- Developed model training, evaluation, checkpointing, and CER measurement
+- Designed and implemented the streaming inference pipeline
+- Implemented online transcript post-processing and merging
+- Wrote the project’s technical documentation and README
+
+### Kyle Tran: Signal Processing
+
+- Implemented RNNoise-based denoising
+- Implemented voice activity detection
+- Implemented audio resampling
+- Implemented audio chunking prior to ASR feature extraction  
 
 ## Key Features
 
@@ -237,7 +265,7 @@ CTC loss is computed for each sample, normalized by the transcript length, and a
 | train-other-500 | Beam Search | 0.2554133292361512 |
 | train-other-500 | Beam Search + KenLM | 0.2989078091388487 |
 
-### Streaming Performance (Chip: Apple M4 Pro, Decoder: Greedy)
+### Streaming Performance (Apple M4 Pro, Greedy Decoder)
 
 | Metric | Value |
 |---|---|
@@ -283,7 +311,4 @@ Planned areas for improvement include:
 
 ## Acknowledgements
 
-This project was developed collaboratively with Kyle Tran, who implemented the audio preprocessing pipeline before feature extraction, including RNNoise-based denoising, voice activity detection, resampling, and audio chunking.
-
-The remaining ASR pipeline, including feature extraction, BiLSTM acoustic modeling, CTC training, decoding, evaluation, streaming inference, and transcript post-processing, was implemented by Nikhil Weerakoon, who also wrote the project’s technical documentation and README.
-
+This project was developed collaboratively with Kyle Tran, who implemented the audio preprocessing pipeline, including RNNoise-based denoising, voice activity detection, resampling, and audio chunking. Nikhil Weerakoon implemented the ASR pipeline from feature extraction through acoustic modeling, CTC training, decoding, evaluation, streaming inference, transcript post-processing, and technical documentation.
