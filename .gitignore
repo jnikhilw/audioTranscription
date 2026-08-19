@@ -2,32 +2,24 @@
 *.wpu
 
 cache/
-checkpoints/
 __pycache__/
 
-*.pt
-
 *.wav
-
 *.m4a
+*.tar.gz
 
-.DS_Store
+data/librispeech/
+data/cache/
 
-
-echo "data/librispeech/" >> .gitignore
-
-echo "data/cache/" >> .gitignore
-
-echo "*.tar.gz" >> .gitignore
+# Checkpoints
+checkpoints/*
+!checkpoints/train_other_500_best_val.pt
 
 # Large pretrained language models
 language_models/*
-
-# Keep documentation inside the ignored folder
 !language_models/README.md
 
 # Python
-__pycache__/
 *.py[cod]
 *.egg-info/
 

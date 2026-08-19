@@ -105,6 +105,7 @@ def kyle_training_preprocess_chunk(chunk_48k_int16, enable_rnnoise=True):
         
     return _apply_dsp_filters_16k(clean_48k_float)
 
+
 # used for reading wav files instead of using live microphone
 def stream_48k_file_to_pipeline(file_path, pipeline_queue, chunk_size=4800, enable_rnnoise=True): 
     try:
@@ -138,6 +139,7 @@ def stream_48k_file_to_pipeline(file_path, pipeline_queue, chunk_size=4800, enab
         print(f"Background thread crashed: {e}")
     finally:
         pipeline_queue.put({"type": "end"})
+        
 
 def stream_microphone_to_pipeline(pipeline_queue, chunk_size=4800, enable_rnnoise=True): 
     """
