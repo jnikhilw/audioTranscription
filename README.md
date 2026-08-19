@@ -92,12 +92,9 @@ audioTranscription/
 │   ├── asr_decoder.py          # CTC decoding utilities
 │   └── decode.py               # Greedy and beam-search decoding
 │
-├── metadata/                   # [description]
-│
 ├── model/
-│   ├── asr_engine.py           # [description]
-│   └── asr_model.py            # Bi-LSTM acoustic model definition
-│
+│   └── asr_model.py.          # Bi-LSTM acoustic model definition
+│                      
 ├── pipeline/
 │   ├── offline.py              # Offline transcription pipeline
 │   └── online.py               # Streaming transcription pipeline
@@ -240,7 +237,7 @@ CTC loss is computed for each sample, normalized by the transcript length, and a
 | train-other-500 | Beam Search | 0.2554133292361512 |
 | train-other-500 | Beam Search + KenLM | 0.2989078091388487 |
 
-### Streaming Performance (Chip: Apple M4 Pro )
+### Streaming Performance (Chip: Apple M4 Pro, Decoder: Greedy)
 
 | Metric | Value |
 |---|---|
