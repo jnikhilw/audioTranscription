@@ -5,6 +5,13 @@ from dataset.asr_vocab import VOCAB_SIZE
 
 class ASRModel(nn.Module):
     
+    """Bidirectional LSTM acoustic model for character-level CTC speech recognition.
+    
+    Args:
+        n_mels (int): Number of log-Mel features per time step.
+        hidden_size (int): Number of hidden units per LSTM direction.
+    """
+    
     def __init__(self, n_mels: int = 80, hidden_size: int = 128):
         super().__init__()
 

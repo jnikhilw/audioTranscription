@@ -69,7 +69,9 @@ def assert_finite(name: str, tensor: torch.Tensor) -> None:
     Args:  
         name (str): Name of the tensor being checked. 
         tensor (torch.Tensor): Tensor to check
-        
+            
+    Returns:
+        None   
     """        
     
     if not torch.isfinite(tensor).all():
@@ -108,7 +110,9 @@ def validate_ctc_batch(
            Shape: (batch_size,)
         target_lengths (torch.Tensor): Number of target tokens for each sample.
            Shape: (batch_size,)
-    
+            
+    Returns:
+        None
     """
 
     time_steps, batch_size, class_count = log_probs.shape
@@ -172,8 +176,10 @@ def report_gradient_failure(
     Args:
         model (torch.nn.Module): Model whose parameter gradients are inspected.
         epoch (int): Training epoch where the failure occurred.
-        batch_index (int): Batch index where the failure occurred.
-
+        batch_index (int): Batch index where the failure occurred.      
+            
+    Returns:
+        None
     """
 
     reports = []

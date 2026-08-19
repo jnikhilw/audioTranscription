@@ -15,7 +15,6 @@ def Chunk_to_Frames(
 ) -> np.ndarray:
     
     """
-    
     Converts a 1D audio sample array into a frame matrix by
     dividing the chunk into overlapping acoustic frames, each
     corresponding to a time step. 
@@ -55,11 +54,11 @@ def Chunk_to_Frames(
     return np.stack(frames).astype(np.float32, copy=False)
 
         
-def remove_dc_offset(signal: np.ndarray) -> np.ndarray:
+def remove_dc_offset(signal: np.ndarray)-> np.ndarray:
     
     """
     Removes the DC offset (0 Hz component) from the audio signal 
-    by subtracting the global mean, centering the waveform at 0.
+    by subtracting the global mean to center the waveform at 0.
     """
     
     return signal - np.mean(signal)
@@ -86,7 +85,7 @@ def apply_hamming_window(frames: np.ndarray) -> np.ndarray:
     return frames * window
 
 
-def compute_spectrogram(frames: np.ndarray):
+def compute_spectrogram(frames: np.ndarray) -> np.ndarray:
     
     """""
     Computes the magnitude spectrogram of the input frames using a Real FFT.
@@ -99,7 +98,7 @@ def compute_spectrogram(frames: np.ndarray):
     
     Args:
         frames np.ndarray: Frame matrix.
-        Shape: (num_frames, frame_size).
+           Shape: (num_frames, frame_size).
 
     Returns:
         np.ndarray: Magnitude spectrogram.
@@ -200,7 +199,6 @@ def apply_mel_filterbank( magnitude_spec: np.ndarray, mel_filterbank: np.ndarray
     while allocating greater frequency resolution to lower frequencies and less to higher frequencies,
     approximating human auditory perception.
 
-    Parameters
     Args:
         magnitude_spec : np.ndarray
            Shape: (num_frames, n_fft_bins)
@@ -233,15 +231,14 @@ def compute_log_mel(mel_spec: np.ndarray, epsilon: float = 1e-10) -> np.ndarray:
         epsilon (float): Small numerical constant added for stability.
 
     Returns:
-        np.ndarray:
-        Log-mel spectrogram.
+        np.ndarray: Log-mel spectrogram.
            Shape: (num_frames, n_mels)       
     """
     
     return np.log(mel_spec + epsilon).astype(np.float32, copy=False)
 
 
-def waveform_to_log_mel( waveform: np.ndarray, mel_filterbank: np.ndarray) -> torch.Tensor:
+def waveform_to_log_mel(waveform: np.ndarray, mel_filterbank: np.ndarray) -> torch.Tensor:
     
     """
     Combines the feature pipeline functions into one function that converts a 1D audio NumPy array

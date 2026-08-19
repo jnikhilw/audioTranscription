@@ -1,3 +1,5 @@
+# Character-level ASR vocabulary containing the CTC blank token,
+# lowercase alphabet characters, space, and apostrophe.
 VOCAB = [
     "<blank>",
     "a", "b", "c", "d", "e", "f", "g",

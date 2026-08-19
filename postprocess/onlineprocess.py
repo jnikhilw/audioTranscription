@@ -25,12 +25,12 @@ def postprocess_online(text: str) -> str:
 
     """
     Applies lightweight cleanup to decoded online ASR text.
-
     The function:
     - trims surrounding whitespace
     - collapses repeated spaces
     - capitalizes the standalone pronoun "i"
     - applies curated contraction corrections
+    
     """
 
     if not text:

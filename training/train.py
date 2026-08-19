@@ -12,13 +12,15 @@ from training.evaluate import eval_diagnostics,  eval_dataset_val
     
 os.makedirs("checkpoints", exist_ok=True)
 
+
 # Compute Device Allocation
 mode = "hybrid"  # "cpu" or "hybrid"
 
-# Save-settings
+# Save settings
 use_cache = True
 load_progress = True
 load_best = False
+checkpoint_frequency = 1 
 
 # Train-set range
 start_percent = 0.0
@@ -28,13 +30,27 @@ end_percent = 0.95
 start_epoch = 0
 num_epoch = 81
 
-# Optimization-settings
+# Evaluation settings
+decoder = "greedy"
+checkpoint_eval_frequency = 3 
+
+# Scheduler settings
+MODE = "min"
+FACTOR =  0.5
+PATIENCE = 2
+MIN_LR = 1e-5
+
+# Optimization settings
 batch_size = 4
 num_workers = 0
 shuffle = True
 learn_rate = 5e-5
 weight_decay = 1e-4
 clip_grad_maxnorm = 1.0
+
+# Debugging settings
+inspect_batches = True
+batch_report_frequency = 100 
 
 # etc
 best_val_cer = None
@@ -85,19 +101,19 @@ optimizer = torch.optim.AdamW(
 
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer,
-    mode="min",
-    factor=0.5,
-    patience=2,
-    min_lr=1e-5)
+    mode=MODE,
+    factor= FACTOR,
+    patience= PATIENCE,
+    min_lr= MIN_LR)
 
 
 if load_progress:
-    if load_best and os.path.exists('checkpoints/best_val.pt'):
-        checkpoint = torch.load("checkpoints/best_val.pt", map_location=device)
+    if load_best and os.path.exists('checkpoints/train_other_500_best_val.pt'):
+        checkpoint = torch.load("checkpoints/train_other_500_best_val.pt", map_location=device)
         model.load_state_dict(checkpoint["model_state"])
-        # optimizer.load_state_dict(checkpoint["optimizer_state"])
-        # best_val_cer = checkpoint["best_val_cer"]
-        # start_epoch = checkpoint["epoch"] + 1           
+        optimizer.load_state_dict(checkpoint["optimizer_state"])
+        best_val_cer = checkpoint["best_val_cer"]
+        start_epoch = checkpoint["epoch"] + 1           
         print("loaded best existing checkpoint")
         
     elif os.path.exists('checkpoints/train_other_500_latest.pt'):
@@ -134,29 +150,29 @@ for epoch in range(start_epoch, num_epoch):
         
         log_probs = F.log_softmax(logits, dim=2)
         log_probs = log_probs.permute(1, 0, 2)
-        
-                   
+                          
         validate_ctc_batch(
             log_probs,
             targets,
             input_lengths,
-            target_lengths,)
+            target_lengths,
+        )
         
         if mode == "hybrid":
             per_sample_losses = ctc(
                 log_probs.cpu(),
                 targets.cpu(),
                 input_lengths.cpu(),
-                target_lengths.cpu(),)
-            
+                target_lengths.cpu(),
+            )
         else:
             per_sample_losses = ctc(
                 log_probs,
                 targets,
                 input_lengths,
-                target_lengths,)
-        
-        
+                target_lengths,
+            )
+          
         if not torch.isfinite(per_sample_losses).all():
             bad_indices = torch.where(
                 ~torch.isfinite(per_sample_losses)
@@ -170,25 +186,21 @@ for epoch in range(start_epoch, num_epoch):
                 f"target_lengths={target_lengths.tolist()}"
             )
         
-        
         loss_target_lengths = target_lengths.to(
             device=per_sample_losses.device,
             dtype=per_sample_losses.dtype,)
         
         loss = ( per_sample_losses / loss_target_lengths).mean()
         
-
-        
         loss.backward()
-        
-
-        
+      
         try:
             gradient_norm = torch.nn.utils.clip_grad_norm_(
                 model.parameters(),
                 max_norm=clip_grad_maxnorm,
                 error_if_nonfinite=True,
             )
+       
         
         except RuntimeError:
             report_gradient_failure(
@@ -198,11 +210,11 @@ for epoch in range(start_epoch, num_epoch):
             )
             raise
 
-
         optimizer.step()
         
-        if batch_index % 100 == 0:
-            print(
+        if inspect_batches:
+            if batch_index % batch_report_frequency == 0:
+                print(
                 f"epoch={epoch}, "
                 f"batch={batch_index}, "
                 f"loss={loss.item():.4f}, "
@@ -210,14 +222,13 @@ for epoch in range(start_epoch, num_epoch):
                 flush=True,
             )        
         
-        total_loss += loss.item()
-        
+        total_loss += loss.item()    
 
     avg_loss = total_loss / len(loader)
     print(f'Epoch {epoch}:',f'loss {avg_loss}') 
 
-
-    save_checkpoint(
+    if epoch % checkpoint_frequency == 0:
+        save_checkpoint(
         "checkpoints/train_other_500_latest.pt",
         epoch,
         model,
@@ -227,16 +238,13 @@ for epoch in range(start_epoch, num_epoch):
     
     print("saved checkpoint")
         
-    if epoch % 3 == 0:
+    if epoch % checkpoint_eval_frequency == 0:
             
-        current_cer = eval_diagnostics(eval_dataset_val, inspect_predictions = False, skill_score = False, DECODER = "greedy")
-            
-        scheduler.step(current_cer)
-            
+        current_cer = eval_diagnostics(eval_dataset_val, inspect_predictions = False, skill_score = False, DECODER = decoder)    
+        scheduler.step(current_cer)     
         current_lr = optimizer.param_groups[0]["lr"]
             
         print("current learning rate:", current_lr)
-        
         
         if best_val_cer == None:
             best_val_cer = current_cer
@@ -247,8 +255,7 @@ for epoch in range(start_epoch, num_epoch):
                 optimizer,
                 avg_loss,
                 best_val_cer)
-            print("saved best checkpoint")
-                
+            print("saved best checkpoint")     
                 
         elif current_cer < best_val_cer:
             best_val_cer = current_cer
@@ -271,5 +278,3 @@ for epoch in range(start_epoch, num_epoch):
             
 end_time = time.time()     
 print("total training time:", end_time - start_time)
-
-

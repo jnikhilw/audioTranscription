@@ -96,7 +96,7 @@ class LibriSpeechASRDataset(Dataset):
       disk and reuses them across epochs, avoiding repeated DSP computation. 
       
       Args:
-        Dataset : Librispeech acoustic dataset.
+        Dataset: Librispeech acoustic dataset.
       """    
     
 
@@ -119,7 +119,7 @@ class LibriSpeechASRDataset(Dataset):
             limit (int): Number of samples to include after the starting index. 
             use_cache (bool): Determines if feature caching is enabled to store feature-extracted tensors. 
             return_transcript (bool): Determines whether to return transcripts for samples. 
-               """        
+        """        
         
         full_dataset = torchaudio.datasets.LIBRISPEECH(root=root, url=url, download=False)
 

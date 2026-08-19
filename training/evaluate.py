@@ -113,8 +113,10 @@ def eval_diagnostics(dataset, inspect_predictions = True, skill_score = True, de
         dataset: Source string 
         inspect_predictions (bool): Target string
         skill_score (bool): Whether to compute CER relative to a random-prediction baseline. 
-        decoder (str): Decoding method, either "greedy" or "beam".
-
+        decoder (str): Decoding method, either "greedy" or "beam".      
+            
+    Returns:
+        None
     """
     
     model = load_model("checkpoints/train_other_500_best_val.pt")
