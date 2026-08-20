@@ -12,6 +12,7 @@ _global_denoiser = None
 _rnnoise_failed = False
 
 def get_rnnoise_instance():
+    """Initializes and returns a single shared instance of RNNoise (lazy loaded)."""
     global _global_denoiser
     if _global_denoiser is None:
         # Lazy import: This only runs when the denoiser is actually called
@@ -21,8 +22,11 @@ def get_rnnoise_instance():
 
 def rnnoise_denoise_48k_chunk(chunk_48k_int16):
     """
-    CORE FUNCTION: RNNoise only. No VAD dropping. No downsampling.
-    Returns: (clean_48k_float, avg_speech_prob)
+    Removes background noise from a 48kHz audio chunk using RNNoise.
+    
+    Returns:
+        tuple: (clean_48k_float, avg_speech_prob) containing the denoised 
+               audio array and the average probability of speech.
     """
     denoiser = get_rnnoise_instance()
     
@@ -43,7 +47,7 @@ def rnnoise_denoise_48k_chunk(chunk_48k_int16):
 
 def _apply_dsp_filters_16k(clean_48k_float: np.ndarray) -> np.ndarray: 
     """
-    HELPER FUNCTION: Keeps our math DRY. Applies downsampling, pre-emphasis, and DC removal.
+    Downsamples 48kHz audio to 16kHz and normalizes amplitude to float values between -1.0 and 1.0.
     """
     clean_16k_float = signal.resample_poly(clean_48k_float, up=1, down=3).astype(np.float32)
     # clean_16k_float = np.append(clean_16k_float[0], clean_16k_float[1:] - 0.97 * clean_16k_float[:-1]) # pre emphasis filter
@@ -53,8 +57,11 @@ def _apply_dsp_filters_16k(clean_48k_float: np.ndarray) -> np.ndarray:
 
 def kyle_online_preprocess_chunk(chunk_48k_int16, vad_threshold=0.2, chunk_duration_ms=100, enable_rnnoise=True): 
     """
-    LIVE APP FUNCTION: Calls RNNoise core (if enabled). 
-    Returns exactly the dictionary format Nikhil requested.
+    Preprocesses real-time streaming audio with noise reduction, Voice Activity Detection (VAD), and downsampling.
+    
+    Returns:
+        dict: A dictionary indicating either speech (with 16kHz audio data) 
+              or silence (with duration in ms).
     """
     global _rnnoise_failed
     
@@ -85,7 +92,7 @@ def kyle_online_preprocess_chunk(chunk_48k_int16, vad_threshold=0.2, chunk_durat
 
 def kyle_training_preprocess_chunk(chunk_48k_int16, enable_rnnoise=True):
     """
-    TRAINING FUNCTION: Calls RNNoise core. NEVER drops audio. Downsamples everything.
+    Preprocesses audio for model training by applying noise reduction and downsampling without dropping silence.
     """
     global _rnnoise_failed
     
@@ -108,6 +115,9 @@ def kyle_training_preprocess_chunk(chunk_48k_int16, enable_rnnoise=True):
 
 # used for reading wav files instead of using live microphone
 def stream_48k_file_to_pipeline(file_path, pipeline_queue, chunk_size=4800, enable_rnnoise=True): 
+    """
+    Reads a mono 48kHz WAV file in chunks, preprocesses each chunk, and pushes payloads into a processing queue.
+    """
     try:
         with wave.open(file_path, 'rb') as wf:
             assert wf.getframerate() == 48000, "Test file must be 48kHz!"
@@ -143,8 +153,7 @@ def stream_48k_file_to_pipeline(file_path, pipeline_queue, chunk_size=4800, enab
 
 def stream_microphone_to_pipeline(pipeline_queue, chunk_size=4800, enable_rnnoise=True): 
     """
-    LIVE MICROPHONE PRODUCER THREAD:
-    Captures live 48kHz audio from the microphone and pushes it to the queue.
+    Records live 48kHz microphone audio, processes chunks in real time, and feeds them into a processing queue.
     """
     p = PyAudio()
     
